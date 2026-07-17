@@ -1,0 +1,11 @@
+[flake8]
+exclude =
+    venv,
+    .venv,
+    env,
+    migrations,
+    __pycache__,
+    .git
+max-line-length = 79
+# Игнорируем ошибки документации и длинных строк в сторонних библиотеках
+ignore = E501, W503, D100, D101, D102, D103, D104, D105, D107, D205, D400, D401
