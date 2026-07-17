@@ -2,14 +2,8 @@ from django.db.models import Count, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from recipes.models import (
-    Favorite,
-    Ingredient,
-    Recipe,
-    RecipeIngredient,
-    ShoppingCart,
-    Tag,
-)
+from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
+                            ShoppingCart, Tag)
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -18,18 +12,11 @@ from users.models import Follow, User
 from .filters import RecipeFilter
 from .pagination import PageLimitPagination
 from .permissions import IsAuthorOrReadOnly
-from .serializers import (
-    IngredientSerializer,
-    RecipeReadSerializer,
-    RecipeShortSerializer,
-    RecipeWriteSerializer,
-    SetAvatarSerializer,
-    SetPasswordSerializer,
-    SubscriptionSerializer,
-    TagSerializer,
-    UserCreateSerializer,
-    UserSerializer,
-)
+from .serializers import (IngredientSerializer, RecipeReadSerializer,
+                          RecipeShortSerializer, RecipeWriteSerializer,
+                          SetAvatarSerializer, SetPasswordSerializer,
+                          SubscriptionSerializer, TagSerializer,
+                          UserCreateSerializer, UserSerializer)
 
 
 class UserViewSet(viewsets.ModelViewSet):
