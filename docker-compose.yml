@@ -7,7 +7,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     env_file: .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -29,6 +29,12 @@ services:
       db:
         condition: service_healthy
 
+  frontend:
+    container_name: foodgram-front
+    build: ./frontend/
+    volumes:
+      - ./frontend/build:/app/build
+
   nginx:
     image: nginx:1.25.4-alpine
     ports:
@@ -41,6 +47,7 @@ services:
       - ./docs:/usr/share/nginx/html/api/docs/
     depends_on:
       - backend
+      - frontend
 
 volumes:
   postgres_data:
