@@ -16,22 +16,12 @@ services:
 
   frontend:
     image: artem0693/foodgram_frontend:latest
-    volumes:
-      - frontend_build:/app/result/
-    entrypoint: ["cp", "-r", "/app/result/.", "/app/result/"]
 
   nginx:
     image: nginx:1.25.4-alpine
-    ports:
-      - "8070:80"
     volumes:
       - ./infra/nginx.conf:/etc/nginx/conf.d/foodgram.conf:ro
-      - frontend_build:/usr/share/nginx/html/
-      - static_volume:/var/html/static/
-      - media_volume:/var/html/media/
-      - ./docs:/usr/share/nginx/html/api/docs/
     depends_on:
-      - backend
       - frontend
 
 volumes:
