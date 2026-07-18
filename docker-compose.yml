@@ -18,6 +18,7 @@ services:
     image: artem0693/foodgram_frontend:latest
     volumes:
       - frontend_build:/app/build/
+    command: sh -c "cp -r /app/build/. /app/result/"
 
   nginx:
     image: nginx:1.25.4-alpine
