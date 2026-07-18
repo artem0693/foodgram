@@ -17,8 +17,8 @@ services:
   frontend:
     image: artem0693/foodgram_frontend:latest
     volumes:
-      - frontend_build:/app/build/
-    command: sh -c "cp -r /usr/share/nginx/html/. /app/result/"
+      - frontend_build:/app/result/
+    entrypoint: ["cp", "-r", "/app/result/.", "/app/result/"]
 
   nginx:
     image: nginx:1.25.4-alpine
