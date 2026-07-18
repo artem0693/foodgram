@@ -16,16 +16,17 @@ services:
 
   frontend:
     image: artem0693/foodgram_frontend:latest
+    volumes:
+      - static_volume:/var/html/static/
 
   nginx:
     image: nginx:1.25.4-alpine
     volumes:
-      - ./infra/nginx.conf:/etc/nginx/conf.d/foodgram.conf:ro
+      - static_volume:/usr/share/nginx/html/:ro
     depends_on:
       - frontend
 
 volumes:
-  frontend_build:
   postgres_data:
   static_volume:
   media_volume:
