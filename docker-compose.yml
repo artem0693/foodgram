@@ -6,7 +6,7 @@ services:
     env_file: .env
 
   backend:
-    image: ${{ secrets.DOCKER_USERNAME }}/foodgram_backend:latest
+    image: artem0693/foodgram_backend:latest
     volumes:
       - static_volume:/app/staticfiles/
       - media_volume:/app/media/
@@ -15,8 +15,7 @@ services:
       - db
 
   frontend:
-    image: ${{ secrets.DOCKER_USERNAME }}/foodgram_frontend:latest
-    # Этот контейнер просто "держит" файлы билда
+    image: artem0693/foodgram_frontend:latest
 
   nginx:
     image: nginx:1.25.4-alpine
