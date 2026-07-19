@@ -14,7 +14,10 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "default-insecure-key-for-dev")
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "backend", "84.252.135.235"]
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS",
+    "127.0.0.1,localhost,backend,84.252.135.235",
+).split(",")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -90,8 +93,8 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
-STATIC_ROOT = BASE_DIR / "staticfiles"
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles" / "static"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"

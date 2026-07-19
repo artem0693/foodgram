@@ -140,3 +140,6 @@ dmypy.json
 
 static/
 media/
+
+db_dump*.json
+fix_migrations.py
