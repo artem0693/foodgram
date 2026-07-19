@@ -1,7 +1,19 @@
 """Фильтры для рецептов."""
 
 from django_filters import rest_framework as filters
-from recipes.models import Recipe, Tag
+from recipes.models import Ingredient, Recipe, Tag
+
+
+class IngredientFilter(filters.FilterSet):
+    """Фильтр ингредиентов по началу названия."""
+
+    name = filters.CharFilter(lookup_expr="istartswith")
+
+    class Meta:
+        """Метаданные фильтра ингредиентов."""
+
+        model = Ingredient
+        fields = ("name",)
 
 
 class RecipeFilter(filters.FilterSet):

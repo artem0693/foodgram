@@ -141,6 +141,7 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
         many=True, queryset=Tag.objects.all()
     )
     image = Base64ImageField()
+    cooking_time = serializers.IntegerField(min_value=1)
 
     class Meta:
         """Метаданные сериализатора записи рецепта."""
@@ -154,6 +155,12 @@ class RecipeWriteSerializer(serializers.ModelSerializer):
             "text",
             "cooking_time",
         )
+
+    def validate_image(self, value):
+        """Запрещает пустое изображение."""
+        if not value:
+            raise serializers.ValidationError("Нужно добавить изображение.")
+        return value
 
     def validate(self, data):
         """Валидация ингредиентов и тегов."""
@@ -298,12 +305,16 @@ class SubscriptionSerializer(UserSerializer):
     """Сериализатор для подписок."""
 
     recipes = serializers.SerializerMethodField(read_only=True)
-    recipes_count = serializers.IntegerField(read_only=True)
+    recipes_count = serializers.SerializerMethodField(read_only=True)
 
     class Meta(UserSerializer.Meta):
         """Метаданные сериализатора подписок."""
 
         fields = UserSerializer.Meta.fields + ("recipes", "recipes_count")
+
+    def get_recipes_count(self, obj):
+        """Возвращает количество рецептов автора."""
+        return obj.recipes.count()
 
     def get_recipes(self, obj):
         """Получение списка рецептов автора для подписки."""

@@ -3,18 +3,18 @@
 тегами и рецептами.
 """
 
-from django.db.models import Count, Sum
+from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
                             ShoppingCart, Tag)
-from rest_framework import filters, permissions, status, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from users.models import Follow, User
 
-from .filters import RecipeFilter
+from .filters import IngredientFilter, RecipeFilter
 from .pagination import PageLimitPagination
 from .permissions import IsAuthorOrReadOnly
 from .serializers import (IngredientSerializer, RecipeReadSerializer,
@@ -84,6 +84,7 @@ class UserViewSet(viewsets.ModelViewSet):
         detail=False,
         methods=["put", "delete"],
         permission_classes=[permissions.IsAuthenticated],
+        url_path="me/avatar",
     )
     def avatar(self, request):
         """Устанавливает или удаляет аватар пользователя."""
@@ -138,9 +139,7 @@ class UserViewSet(viewsets.ModelViewSet):
     )
     def subscriptions(self, request):
         """Возвращает список подписок текущего пользователя."""
-        queryset = User.objects.filter(following__user=request.user).annotate(
-            recipes_count=Count("recipes")
-        )
+        queryset = User.objects.filter(following__user=request.user)
         page = self.paginate_queryset(queryset)
         serializer = SubscriptionSerializer(
             page, many=True, context={"request": request}
@@ -154,8 +153,8 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientSerializer
     pagination_class = None
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ("^name",)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = IngredientFilter
 
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
