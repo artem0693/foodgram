@@ -16,8 +16,17 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = os.getenv(
     "ALLOWED_HOSTS",
-    "127.0.0.1,localhost,backend,84.252.135.235",
+    "127.0.0.1,localhost,backend,84.252.135.235,"
+    "foodgramedaaa.servepics.com",
 ).split(",")
+
+CSRF_TRUSTED_ORIGINS = os.getenv(
+    "CSRF_TRUSTED_ORIGINS",
+    "https://foodgramedaaa.servepics.com",
+).split(",")
+
+# Запросы приходят от системного nginx по HTTPS.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
