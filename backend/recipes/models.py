@@ -1,7 +1,34 @@
 """Модели приложения recipes."""
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import Exists, OuterRef
+
+MIN_AMOUNT = 1
+MAX_AMOUNT = 32000
+MIN_COOKING_TIME = 1
+MAX_COOKING_TIME = 32000
+
+
+class RecipeQuerySet(models.QuerySet):
+    """QuerySet рецептов с аннотацией избранного и списка покупок."""
+
+    def with_user_flags(self, user):
+        """Добавляет булевы поля is_favorited и is_in_shopping_cart."""
+        user_id = user.pk if user else None
+        return self.annotate(
+            is_favorited=Exists(
+                Favorite.objects.filter(
+                    user_id=user_id, recipe=OuterRef("pk")
+                )
+            ),
+            is_in_shopping_cart=Exists(
+                ShoppingCart.objects.filter(
+                    user_id=user_id, recipe=OuterRef("pk")
+                )
+            ),
+        )
 
 
 class Tag(models.Model):
@@ -62,8 +89,16 @@ class Recipe(models.Model):
     tags = models.ManyToManyField(
         Tag, related_name="recipes", verbose_name="Теги"
     )
-    cooking_time = models.PositiveSmallIntegerField("Время приготовления")
+    cooking_time = models.PositiveSmallIntegerField(
+        "Время приготовления",
+        validators=(
+            MinValueValidator(MIN_COOKING_TIME),
+            MaxValueValidator(MAX_COOKING_TIME),
+        ),
+    )
     pub_date = models.DateTimeField("Дата публикации", auto_now_add=True)
+
+    objects = RecipeQuerySet.as_manager()
 
     class Meta:
         """Метаданные модели рецепта."""
@@ -92,19 +127,29 @@ class RecipeIngredient(models.Model):
         related_name="recipe_ingredients",
         verbose_name="Ингредиент",
     )
-    amount = models.PositiveSmallIntegerField("Количество")
+    amount = models.PositiveSmallIntegerField(
+        "Количество",
+        validators=(
+            MinValueValidator(MIN_AMOUNT),
+            MaxValueValidator(MAX_AMOUNT),
+        ),
+    )
 
     class Meta:
         """Метаданные связи рецепта и ингредиента."""
 
         verbose_name = "Ингредиент в рецепте"
         verbose_name_plural = "Ингредиенты в рецептах"
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
-                fields=["recipe", "ingredient"],
+                fields=("recipe", "ingredient"),
                 name="unique_recipe_ingredient",
-            )
-        ]
+            ),
+        )
+
+    def __str__(self):
+        """Возвращает строковое представление ингредиента в рецепте."""
+        return f"{self.ingredient} — {self.amount}"
 
 
 class Favorite(models.Model):
@@ -128,11 +173,15 @@ class Favorite(models.Model):
 
         verbose_name = "Избранное"
         verbose_name_plural = "Избранное"
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
-                fields=["user", "recipe"], name="unique_favorite"
-            )
-        ]
+                fields=("user", "recipe"), name="unique_favorite"
+            ),
+        )
+
+    def __str__(self):
+        """Возвращает строковое представление избранного."""
+        return f"{self.user} — {self.recipe}"
 
 
 class ShoppingCart(models.Model):
@@ -156,8 +205,12 @@ class ShoppingCart(models.Model):
 
         verbose_name = "Список покупок"
         verbose_name_plural = "Список покупок"
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
-                fields=["user", "recipe"], name="unique_shopping_cart"
-            )
-        ]
+                fields=("user", "recipe"), name="unique_shopping_cart"
+            ),
+        )
+
+    def __str__(self):
+        """Возвращает строковое представление списка покупок."""
+        return f"{self.user} — {self.recipe}"

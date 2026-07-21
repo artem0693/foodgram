@@ -14,7 +14,14 @@ User = get_user_model()
 
 PASSWORD = "PASSWORD1234"
 
-USERS = [
+IMAGE_SIZE = (400, 300)
+IMAGE_COLOR = (200, 200, 200)
+IMAGE_FORMAT = "PNG"
+INGREDIENTS_PER_RECIPE = 3
+INGREDIENT_AMOUNT = 50
+COOKING_TIME_STEP = 10
+
+USERS = (
     {
         "username": "admin",
         "email": "admin@foodgram.local",
@@ -47,7 +54,7 @@ USERS = [
         "is_staff": False,
         "is_superuser": False,
     },
-]
+)
 
 
 class Command(BaseCommand):
@@ -55,23 +62,23 @@ class Command(BaseCommand):
 
     def make_image(self, name):
         """Создаёт простую картинку-заглушку для рецепта."""
-        image = Image.new("RGB", (400, 300), (200, 200, 200))
+        image = Image.new("RGB", IMAGE_SIZE, IMAGE_COLOR)
         buffer = BytesIO()
-        image.save(buffer, "PNG")
+        image.save(buffer, IMAGE_FORMAT)
         return ContentFile(buffer.getvalue(), name=name)
 
     def handle(self, *args, **options):
-        # Если ингредиентов или тегов ещё нет — загружаем их.
+        """Создаёт тестовых пользователей и по рецепту от каждого."""
         if not Ingredient.objects.exists() or not Tag.objects.exists():
             call_command("import_data")
 
         tags = list(Tag.objects.all())
-        ingredients = list(Ingredient.objects.all()[:3])
+        ingredients = list(Ingredient.objects.all()[:INGREDIENTS_PER_RECIPE])
 
         number = 1
-        for data in USERS:
+        for user_data in USERS:
             user, created = User.objects.get_or_create(
-                username=data["username"], defaults=data
+                username=user_data["username"], defaults=user_data
             )
             if created:
                 user.set_password(PASSWORD)
@@ -83,7 +90,7 @@ class Command(BaseCommand):
                     author=user,
                     name=f"Блюдо от {user.first_name}",
                     text="Простой и вкусный рецепт для теста.",
-                    cooking_time=number * 10,
+                    cooking_time=number * COOKING_TIME_STEP,
                 )
                 recipe.image.save(
                     f"recipe_{number}.png",
@@ -92,7 +99,9 @@ class Command(BaseCommand):
                 recipe.tags.set(tags)
                 for ingredient in ingredients:
                     RecipeIngredient.objects.create(
-                        recipe=recipe, ingredient=ingredient, amount=50
+                        recipe=recipe,
+                        ingredient=ingredient,
+                        amount=INGREDIENT_AMOUNT,
                     )
             number += 1
 

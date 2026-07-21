@@ -1,14 +1,15 @@
 """Кастомные права доступа."""
 
-from rest_framework import permissions
+from rest_framework.permissions import SAFE_METHODS, IsAuthenticatedOrReadOnly
 
 
-class IsAuthorOrReadOnly(permissions.BasePermission):
-    """Разрешает редактирование только автору, остальные — только чтение."""
+class IsAuthenticatedAuthorOrReadOnly(IsAuthenticatedOrReadOnly):
+    """Чтение — всем, изменение — только автору объекта.
 
-    def has_object_permission(self, request, view, obj):
-        """Проверяет права доступа к объекту."""
-        return (
-            request.method in permissions.SAFE_METHODS
-            or obj.author == request.user
-        )
+    Наследуется от IsAuthenticatedOrReadOnly: has_permission уже запрещает
+    небезопасные методы неаутентифицированным пользователям.
+    """
+
+    def has_object_permission(self, request, view, recipe):
+        """Разрешает изменение объекта только его автору."""
+        return request.method in SAFE_METHODS or recipe.author == request.user

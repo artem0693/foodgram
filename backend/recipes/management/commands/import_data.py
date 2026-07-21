@@ -1,3 +1,5 @@
+"""Команда импорта ингредиентов и тегов из CSV в базу данных."""
+
 import csv
 
 from django.conf import settings
@@ -12,10 +14,12 @@ class Command(BaseCommand):
     help = "Импорт ингредиентов и тегов из CSV в базу данных"
 
     def handle(self, *args, **kwargs):
-        # 1. Импорт ингредиентов
+        """Загружает ингредиенты и теги из CSV-файлов."""
         try:
-            with open(DATA_DIR / "ingredients.csv", encoding="utf-8") as f:
-                reader = csv.reader(f)
+            with open(
+                DATA_DIR / "ingredients.csv", encoding="utf-8"
+            ) as csv_file:
+                reader = csv.reader(csv_file)
                 for name, unit in reader:
                     Ingredient.objects.get_or_create(
                         name=name, measurement_unit=unit
@@ -23,21 +27,20 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.SUCCESS("Ингредиенты успешно загружены!")
             )
-        except Exception as e:
+        except Exception as err:
             self.stdout.write(
-                self.style.ERROR(f"Ошибка при импорте ингредиентов: {e}")
+                self.style.ERROR(f"Ошибка при импорте ингредиентов: {err}")
             )
 
-        # 2. Импорт тегов
         try:
-            with open(DATA_DIR / "tags.csv", encoding="utf-8") as f:
-                reader = csv.reader(f)
+            with open(DATA_DIR / "tags.csv", encoding="utf-8") as csv_file:
+                reader = csv.reader(csv_file)
                 for name, color, slug in reader:
                     Tag.objects.get_or_create(
                         name=name, color=color, slug=slug
                     )
             self.stdout.write(self.style.SUCCESS("Теги успешно загружены!"))
-        except Exception as e:
+        except Exception as err:
             self.stdout.write(
-                self.style.ERROR(f"Ошибка при импорте тегов: {e}")
+                self.style.ERROR(f"Ошибка при импорте тегов: {err}")
             )

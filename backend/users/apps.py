@@ -7,3 +7,4 @@ class UsersConfig(AppConfig):
     """Класс конфигурации приложения users."""
 
     name = "users"
+    verbose_name = "Пользователи"

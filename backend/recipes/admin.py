@@ -7,6 +7,18 @@ from .models import (Favorite, Ingredient, Recipe, RecipeIngredient,
                      ShoppingCart, Tag)
 
 
+class NameSearchAdmin(admin.ModelAdmin):
+    """Базовая админка с поиском по названию."""
+
+    search_fields = ("name",)
+
+
+class UserRecipeAdmin(admin.ModelAdmin):
+    """Базовая админка для связей пользователь-рецепт."""
+
+    list_display = ("user", "recipe")
+
+
 class RecipeIngredientInline(admin.TabularInline):
     """Инлайн для отображения ингредиентов внутри рецепта."""
 
@@ -16,19 +28,17 @@ class RecipeIngredientInline(admin.TabularInline):
 
 
 @admin.register(Tag)
-class TagAdmin(admin.ModelAdmin):
+class TagAdmin(NameSearchAdmin):
     """Админка для тегов."""
 
     list_display = ("name", "slug")
-    search_fields = ("name",)
 
 
 @admin.register(Ingredient)
-class IngredientAdmin(admin.ModelAdmin):
+class IngredientAdmin(NameSearchAdmin):
     """Админка для ингредиентов."""
 
     list_display = ("name", "measurement_unit")
-    search_fields = ("name",)
 
 
 @admin.register(Recipe)
@@ -48,22 +58,18 @@ class RecipeAdmin(admin.ModelAdmin):
             .annotate(favorites_count=models.Count("favorites"))
         )
 
-    def count_favorites(self, obj):
+    def count_favorites(self, recipe):
         """Выводим аннотированное значение."""
-        return obj.favorites_count
+        return recipe.favorites_count
 
     count_favorites.short_description = "В избранном"
 
 
 @admin.register(Favorite)
-class FavoriteAdmin(admin.ModelAdmin):
+class FavoriteAdmin(UserRecipeAdmin):
     """Админка для избранного."""
-
-    list_display = ("user", "recipe")
 
 
 @admin.register(ShoppingCart)
-class ShoppingCartAdmin(admin.ModelAdmin):
+class ShoppingCartAdmin(UserRecipeAdmin):
     """Админка для корзины покупок."""
-
-    list_display = ("user", "recipe")

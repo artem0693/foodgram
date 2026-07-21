@@ -1,13 +1,13 @@
 """Настройка админ-панели для приложения users."""
 
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from .models import Follow, User
 
 
 @admin.register(User)
-class CustomUserAdmin(UserAdmin):
+class UserAdmin(BaseUserAdmin):
     """Настройка отображения пользователей в админ-панели."""
 
     list_display = ("email", "username", "first_name", "last_name", "is_staff")

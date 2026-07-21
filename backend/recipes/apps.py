@@ -7,3 +7,4 @@ class RecipesConfig(AppConfig):
     """Класс конфигурации приложения recipes."""
 
     name = "recipes"
+    verbose_name = "Рецепты"

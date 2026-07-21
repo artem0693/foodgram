@@ -31,7 +31,7 @@ class User(AbstractUser):
 
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
-        ordering = ("id",)
+        ordering = ("username",)
 
     def __str__(self):
         """Возвращает строковое представление пользователя (email)."""
@@ -57,32 +57,32 @@ class Follow(models.Model):
         verbose_name="Автор",
     )
 
-    def clean(self):
-        """Запрещает подписку на самого себя.
-
-        Срабатывает при full_clean() — то есть через ModelForm/админку.
-        Основная защита в API — явная проверка в UserViewSet.subscribe,
-        эта проверка дополнительно закрывает случай создания записи
-        через django admin.
-        """
-        if self.user_id == self.author_id:
-            raise ValidationError("Нельзя подписаться на самого себя.")
-
     class Meta:
         """Метаданные модели подписок."""
 
         verbose_name = "Подписка"
         verbose_name_plural = "Подписки"
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
-                fields=["user", "author"], name="unique_follow"
+                fields=("user", "author"), name="unique_follow"
             ),
             models.CheckConstraint(
                 condition=~models.Q(user=models.F("author")),
                 name="prevent_self_follow",
             ),
-        ]
+        )
 
     def __str__(self):
         """Возвращает информацию о том, кто на кого подписан."""
         return f"{self.user.username} подписан на {self.author.username}"
+
+    def clean(self):
+        """Запрещает подписку на самого себя.
+
+        Срабатывает при full_clean() — то есть через ModelForm/админку.
+        Основная защита в API — проверка в SubscribeSerializer,
+        а это ограничение дополнительно закрывает случай создания
+        записи через django admin.
+        """
+        if self.user_id == self.author_id:
+            raise ValidationError("Нельзя подписаться на самого себя.")
