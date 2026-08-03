@@ -1,18 +1,20 @@
 """Представления для пользователей, ингредиентов, тегов и рецептов."""
 
+import io
+
 from django.contrib.auth import get_user_model
 from django.db.models import F, Sum
-from django.http import HttpResponse
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.serializers import UserCreateSerializer
-from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
-                            ShoppingCart, Tag)
+from recipes.models import Ingredient, Recipe, RecipeIngredient, Tag
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
+from rest_framework.serializers import BaseSerializer
 
 from .filters import IngredientFilter, RecipeFilter
 from .pagination import PageLimitPagination
@@ -27,7 +29,28 @@ from .serializers import (FavoriteSerializer, IngredientSerializer,
 User = get_user_model()
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class RelationMixin:
+    """Общая логика добавления и удаления связи «пользователь — объект».
+
+    Используется для избранного, списка покупок и подписок.
+    """
+
+    def create_relation(self, data):
+        """Создаёт связь; вся валидация — в сериализаторе действия."""
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def delete_relation(self, queryset, error_message):
+        """Удаляет связь; отдаёт 400, если её не существовало."""
+        deleted, _ = queryset.delete()
+        if not deleted:
+            raise ValidationError(error_message)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class UserViewSet(RelationMixin, viewsets.ModelViewSet):
     """ViewSet для работы с пользователями."""
 
     queryset = User.objects.all()
@@ -48,9 +71,9 @@ class UserViewSet(viewsets.ModelViewSet):
             return (permissions.IsAuthenticated(),)
         return super().get_permissions()
 
-    def get_serializer_class(self):
+    def get_serializer_class(self) -> type[BaseSerializer]:
         """Возвращает соответствующий сериализатор для действия."""
-        serializers_by_action = {
+        serializers_by_action: dict[str, type[BaseSerializer]] = {
             "create": UserCreateSerializer,
             "set_password": SetPasswordSerializer,
             "avatar": SetAvatarSerializer,
@@ -104,19 +127,16 @@ class UserViewSet(viewsets.ModelViewSet):
     def subscribe(self, request, pk=None):
         """Подписаться на автора."""
         author = self.get_object()
-        serializer = self.get_serializer(data={"author": author.pk})
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return self.create_relation({"author": author.pk})
 
     @subscribe.mapping.delete
     def unsubscribe(self, request, pk=None):
         """Отписаться от автора."""
         author = self.get_object()
-        deleted, _ = request.user.follower.filter(author=author).delete()
-        if not deleted:
-            raise ValidationError("Вы не были подписаны на этого автора.")
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return self.delete_relation(
+            request.user.follower.filter(author=author),
+            "Вы не были подписаны на этого автора.",
+        )
 
     @action(detail=False, permission_classes=(permissions.IsAuthenticated,))
     def subscriptions(self, request):
@@ -149,7 +169,7 @@ class TagViewSet(BaseReadOnlyViewSet):
     serializer_class = TagSerializer
 
 
-class RecipeViewSet(viewsets.ModelViewSet):
+class RecipeViewSet(RelationMixin, viewsets.ModelViewSet):
     """ViewSet для управления рецептами."""
 
     permission_classes = (IsAuthenticatedAuthorOrReadOnly,)
@@ -165,38 +185,19 @@ class RecipeViewSet(viewsets.ModelViewSet):
             .prefetch_related("tags", "ingredient_list__ingredient")
         )
 
-    def get_serializer_class(self):
+    def get_serializer_class(self) -> type[BaseSerializer]:
         """Возвращает соответствующий сериализатор для действия."""
         if self.action == "favorite":
             return FavoriteSerializer
         if self.action == "shopping_cart":
             return ShoppingCartSerializer
-        if self.action in ("list", "retrieve"):
+        if self.action in {"list", "retrieve"}:
             return RecipeReadSerializer
         return RecipeWriteSerializer
 
     def update(self, request, *args, **kwargs):
         """Обновление рецепта: все поля обязательны, в том числе при PATCH."""
-        kwargs["partial"] = False
-        return super().update(request, *args, **kwargs)
-
-    def _add_relation(self, pk):
-        """Добавляет рецепт в избранное или список покупок."""
-        get_object_or_404(Recipe, pk=pk)
-        serializer = self.get_serializer(data={"recipe": pk})
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def _remove_relation(self, model, pk):
-        """Удаляет рецепт из избранного или списка покупок."""
-        get_object_or_404(Recipe, pk=pk)
-        deleted, _ = model.objects.filter(
-            user=self.request.user, recipe_id=pk
-        ).delete()
-        if not deleted:
-            raise ValidationError("Рецепта не было в списке.")
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return super().update(request, *args, **{**kwargs, "partial": False})
 
     @action(
         detail=True,
@@ -205,12 +206,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def favorite(self, request, pk=None):
         """Добавляет рецепт в избранное."""
-        return self._add_relation(pk)
+        get_object_or_404(Recipe, pk=pk)
+        return self.create_relation({"recipe": pk})
 
     @favorite.mapping.delete
     def remove_favorite(self, request, pk=None):
         """Удаляет рецепт из избранного."""
-        return self._remove_relation(Favorite, pk)
+        get_object_or_404(Recipe, pk=pk)
+        return self.delete_relation(
+            request.user.favorites.filter(recipe_id=pk),
+            "Рецепта не было в избранном.",
+        )
 
     @action(
         detail=True,
@@ -219,12 +225,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
     )
     def shopping_cart(self, request, pk=None):
         """Добавляет рецепт в список покупок."""
-        return self._add_relation(pk)
+        get_object_or_404(Recipe, pk=pk)
+        return self.create_relation({"recipe": pk})
 
     @shopping_cart.mapping.delete
     def remove_shopping_cart(self, request, pk=None):
         """Удаляет рецепт из списка покупок."""
-        return self._remove_relation(ShoppingCart, pk)
+        get_object_or_404(Recipe, pk=pk)
+        return self.delete_relation(
+            request.user.shopping_cart.filter(recipe_id=pk),
+            "Рецепта не было в списке покупок.",
+        )
 
     @action(detail=False, permission_classes=(permissions.IsAuthenticated,))
     def download_shopping_cart(self, request):
@@ -240,18 +251,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
             .annotate(total=Sum("amount"))
             .order_by("name")
         )
-        body = "\n".join(
+        lines = [
             f"{product['name']} ({product['unit']}) — {product['total']}"
             for product in products
-        )
-        response = HttpResponse(
-            f"Список покупок:\n\n{body}",
+        ]
+        content = "Список покупок:\n\n" + "\n".join(lines)
+        return FileResponse(
+            io.BytesIO(content.encode("utf-8")),
+            as_attachment=True,
+            filename="shopping_cart.txt",
             content_type="text/plain; charset=utf-8",
         )
-        response["Content-Disposition"] = (
-            'attachment; filename="shopping_cart.txt"'
-        )
-        return response
 
     @action(detail=True, url_path="get-link")
     def get_link(self, request, pk=None):
